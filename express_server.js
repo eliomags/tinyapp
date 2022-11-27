@@ -56,9 +56,14 @@ app.post("/urls", (req, res) => {
 });
 
 app.get("/u/:id", (req, res) => {
-  console.log(req.params.id);
 
   res.redirect(urlDatabase[req.params.id]);
+});
+
+app.post("/urls/:id/delete", (req, res) => {
+  const id = req.params.id
+  delete urlDatabase[id]
+  res.redirect("/urls");
 });
 
 app.listen(PORT, () => {
