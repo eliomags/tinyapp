@@ -1,8 +1,8 @@
 const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
-const cookieParser = require('cookie-parser')
 const bcrypt = require("bcryptjs");
+const cookieSession = require('cookie-session');
 
 function generateRandomString() {
   const chars = '0123456789abcdefghiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXTZ';
@@ -71,7 +71,12 @@ const urlDatabase2 = {
 
 //Middleware
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser())
+app.use(cookieSession({
+  name: 'session',
+  keys: ["source", "zon", "marketplace"],
+
+  maxAge: 24 * 60 * 60 * 1000
+}))
 
 //Landing page 
 app.get("/", (req, res) => {
@@ -90,8 +95,8 @@ app.get("/hello", (req, res) => {
 
 // Get....rendering urls data set at the server side in a urls_index.ejs template 
 app.get("/urls", (req, res) => {
-  const ID = req.cookies["user_id"]
-  const user = users[req.cookies["user_id"]]
+  const ID = req.session["user_id"]
+  const user = users[ID]
   const templateVars = { 
     user,
     urls: urlsForUser(ID)};
@@ -100,8 +105,8 @@ app.get("/urls", (req, res) => {
 
 //Get...entering new URL into the urls_new.ejs template to get the short url...permission based (only for loggedin/registered users)***
 app.get("/urls/new", (req, res) => {
-  if (req.cookies["user_id"]) {
-  const user = users[req.cookies["user_id"]]
+  if (req.session["user_id"]) {
+  const user = users[req.session["user_id"]]
   const templateVars = { 
     user,
     urls: urlDatabase2 };
@@ -114,7 +119,7 @@ app.get("/urls/new", (req, res) => {
 //Get...for an individual url page in a urls_show.ejs template
 // user can access only his/her urls
 app.get("/urls/:id", (req, res) => {
-  const ID = req.cookies["user_id"]
+  const ID = req.session["user_id"]
   const user = users[ID]
   if (!urlDatabase2[req.params.id]) {
     return res.status(404).send("This id doesn't exist")
@@ -134,11 +139,11 @@ app.get("/urls/:id", (req, res) => {
 
 //Post....assigning randomized short URL to the submitted long URL...permission based (only for loggedin/registered users)***
 app.post("/urls", (req, res) => {
-  if (req.cookies["user_id"]) {
+if (req.session["user_id"]) {
   const newShortUrl = generateRandomString();
   urlDatabase2[newShortUrl] = {
     longURL: req.body.longURL,
-    userID: req.cookies["user_id"]
+    userID: req.session["user_id"]
   };
   res.redirect("/urls/" + newShortUrl);
   } else {
@@ -161,8 +166,8 @@ app.get("/u/:id", (req, res) => {
 // users can delete only urls from their dataset
 app.post("/urls/:id/delete", (req, res) => {
   const id = req.params.id
-  const ID = req.cookies["user_id"]
-  if (!req.cookies["user_id"]) {
+  const ID = req.session["user_id"]
+  if (!req.session["user_id"]) {
     return res.status(401).send("Please login or register to access resource")
   }
   else if (!urlDatabase2[req.params.id]) {
@@ -181,7 +186,7 @@ app.post("/urls/:id/delete", (req, res) => {
 //Only authorized users can update url
 app.post("/urls/:id/update", (req, res) => {
   const id = req.params.id
-  if (!req.cookies["user_id"]) {
+  if (!req.session["user_id"]) {
     return res.status(401).send("Please login or register to access resource")
   }
   else if (!urlDatabase2[id]) {
@@ -207,13 +212,13 @@ app.post("/login", (req, res) => {
     return res.status(403).send("Password is incorrect");
   }
   else {
-  res.cookie("user_id", user.id)
+  req.session["user_id"] = user.id;
   res.redirect("/urls");
 }});
 
 //Post...submitting logout request and clrearing user_id cookie
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id")
+  req.session = null;
   res.redirect("/login");
 });
 
@@ -233,17 +238,17 @@ app.post("/register", (req, res) => {
     email: req.body.email,
     hashedPassword: bcrypt.hashSync(req.body.password, 10) // hashing password
   }
-    res.cookie("user_id", newId)
+  req.session["user_id"] = newId;
   res.redirect("/urls"); 
   console.log(users)
 }});
 
 //Get to open Registration form...redirects to /urls if user signed in
 app.get("/register", (req, res) => {
-  if (req.cookies["user_id"]) {
+  if (req.session["user_id"]) {
     res.redirect("/urls")
   } else {
-  const user = users[req.cookies["user_id"]]
+  const user = users[req.session["user_id"]]
   const templateVars = {
     user
   };
@@ -253,10 +258,10 @@ app.get("/register", (req, res) => {
 
 //Get to open login page..redirects to /urls if user signed in
 app.get("/login", (req, res) => {
-  if (req.cookies["user_id"]) {
+  if (req.session["user_id"]) {
     res.redirect("/urls")
   } else {
-  const user = users[req.cookies["user_id"]]
+  const user = users[req.session["user_id"]]
   const templateVars = {
     user
   };
