@@ -56,18 +56,14 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
-//username1
 app.get("/urls", (req, res) => {
-  console.log(req.cookies["user_id"])
   const user = users[req.cookies["user_id"]]
   const templateVars = { 
     user,
     urls: urlDatabase };
-    console.log(templateVars)
   res.render("urls_index", templateVars);
 });
 
-//username2
 app.get("/urls/new", (req, res) => {
   const user = users[req.cookies["user_id"]]
   const templateVars = { 
@@ -76,8 +72,8 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", templateVars);
 });
 
-//username3
 app.get("/urls/:id", (req, res) => {
+  console.log(req.cookies)
   const user = users[req.cookies["user_id"]]
   const templateVars = {
     user,
@@ -110,14 +106,6 @@ app.post("/urls/:id/update", (req, res) => {
   res.redirect("/urls");
 });
 
-/*
-//username4*
-app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username)
-  res.redirect("/urls");
-});
-*/
-
 app.post("/login", (req, res) => {
   const {email, password } = req.body;
   const user = getUserByEmail(email)
@@ -132,16 +120,9 @@ app.post("/login", (req, res) => {
   res.redirect("/urls");
 }});
 
-/*
-//username5*
-app.post("/logout", (req, res) => {
-  res.clearCookie("username")
-  res.redirect("/urls");
-});
-*/
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id")
-  res.redirect("/urls");
+  res.redirect("/login");
 });
 
 app.post("/register", (req, res) => {
@@ -160,7 +141,6 @@ app.post("/register", (req, res) => {
     password: req.body.password
   }
     res.cookie("user_id", newId)
-  // console.log(users);
   res.redirect("/urls"); 
 }});
 
