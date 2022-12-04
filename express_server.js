@@ -155,6 +155,9 @@ app.post("/register", (req, res) => {
 }});
 
 app.get("/register", (req, res) => {
+  if (req.cookies["user_id"]) {
+    res.redirect("/urls")
+  } else {
   const user = users[req.cookies["user_id"]]
   const templateVars = {
     user,
@@ -162,10 +165,14 @@ app.get("/register", (req, res) => {
     longURL: urlDatabase[req.params.id],
   };
   res.render("user-registration", templateVars);
+  }
 })
 
 
 app.get("/login", (req, res) => {
+  if (req.cookies["user_id"]) {
+    res.redirect("/urls")
+  } else {
   const user = users[req.cookies["user_id"]]
   const templateVars = {
     user,
@@ -173,6 +180,7 @@ app.get("/login", (req, res) => {
     longURL: urlDatabase[req.params.id],
   };
   res.render("login", templateVars);
+}
 })
 
 app.listen(PORT, () => {
