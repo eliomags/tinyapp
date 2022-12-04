@@ -3,71 +3,12 @@ const app = express();
 const PORT = 8080; // default port 8080
 const bcrypt = require("bcryptjs");
 const cookieSession = require('cookie-session');
-
-function generateRandomString() {
-  const chars = '0123456789abcdefghiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXTZ';
-  let str = '';
-  for (let i = 0; i < 6; i++) {
-    str += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return str;
-}
+const helpers = require("./helpers.js")
+const {users, urlDatabase2} = require("./Datasets.js")
 
 app.set("view engine", "ejs");
 
-// helper function to find user by email
-function getUserByEmail (email) {
-  for (const userId in users) {
-  if (users[userId].email === email) {
-    return users[userId] 
-  }
-}
-return null
-};
 
-// helper function to filter url dataset by user id 
-function urlsForUser(id) {
-  const filteredKeys = {};
-  for (let key in urlDatabase2) {
-    if (urlDatabase2[key].userID === id) {
-      filteredKeys[key] = urlDatabase2[key]
-    }
-  }
-  return filteredKeys;
-}
-
-//users dataset
-const users = {
-  userRandomID: {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: "purple-monkey-dinosaur",
-    hashedPassword: "$2a$10$EIe8tgmYghULtStk3D63puhe7wlU7DwX/1zAXoFpGyDJE5NEsKJ4C"
-  },
-  user2RandomID: {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: "dishwasher-funk",
-    hashedPassword: "$2a$10$hD1N7Xfk298awjf3k0mWke2/twmVaB7rzUrJx.SH9eTl4/IY95B8u"
-  },
-};
-
-//urls Old dataset
-const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
-};
-// urls New Dataset Structure with id as a key to an object
-const urlDatabase2 = {
-  b6UTxQ: {
-    longURL: "https://www.tsn.ca",
-    userID: "user2RandomID",
-  },
-  i3BoGr: {
-    longURL: "https://www.google.ca",
-    userID: "aJ48lW",
-  },
-};
 
 //Middleware
 app.use(express.urlencoded({ extended: true }));
@@ -99,7 +40,7 @@ app.get("/urls", (req, res) => {
   const user = users[ID]
   const templateVars = { 
     user,
-    urls: urlsForUser(ID)};
+    urls: helpers.urlsForUser(ID, urlDatabase2)};
   res.render("urls_index", templateVars);
 });
 
@@ -131,7 +72,7 @@ app.get("/urls/:id", (req, res) => {
   const templateVars = {
     user,
     id: req.params.id,
-    longURL: urlsForUser(ID)[req.params.id].longURL,
+    longURL: helpers.urlsForUser(ID, urlDatabase2)[req.params.id].longURL,
   };
   res.render("urls_show", templateVars);
 }
@@ -140,7 +81,7 @@ app.get("/urls/:id", (req, res) => {
 //Post....assigning randomized short URL to the submitted long URL...permission based (only for loggedin/registered users)***
 app.post("/urls", (req, res) => {
 if (req.session["user_id"]) {
-  const newShortUrl = generateRandomString();
+  const newShortUrl = helpers.generateRandomString();
   urlDatabase2[newShortUrl] = {
     longURL: req.body.longURL,
     userID: req.session["user_id"]
@@ -177,7 +118,7 @@ app.post("/urls/:id/delete", (req, res) => {
     return res.status(401).send("You are not authorized to access and delete this URL")
   } 
   else {
-  delete urlsForUser(ID)[id]
+  delete helpers.urlsForUser(ID, urlDatabase2)[id]
   res.redirect("/urls");
 }
 });
@@ -204,7 +145,7 @@ app.post("/urls/:id/update", (req, res) => {
 //Post...submitting login request and checking if email exists, password is correct 
 app.post("/login", (req, res) => {
   const {email, password } = req.body;
-  const user = getUserByEmail(email)
+  const user = helpers.getUserByEmail(email, users)
   if (!user) {
     return res.status(403).send("Email is incorrect");
   }
@@ -225,14 +166,14 @@ app.post("/logout", (req, res) => {
 //Post...submitting registration form and checking if user already exists
 app.post("/register", (req, res) => {
   const {email, password } = req.body;
-  if (getUserByEmail(email)) {
-    return res.status(400).send("Email or password are in use");
+  if (helpers.getUserByEmail(email, users)) {
+    return res.status(400).send("Email is in use");
   }
    if (!email || !password) {
     return res.status(400).send("Email and password are required fields.");  
   }
   else {
-  const newId = generateRandomString();
+  const newId = helpers.generateRandomString();
   users[newId] = {
     id: newId,
     email: req.body.email,
