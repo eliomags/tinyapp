@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 const cookieParser = require('cookie-parser')
+const bcrypt = require("bcryptjs");
 
 function generateRandomString() {
   const chars = '0123456789abcdefghiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXTZ';
@@ -41,11 +42,13 @@ const users = {
     id: "userRandomID",
     email: "user@example.com",
     password: "purple-monkey-dinosaur",
+    hashedPassword: "$2a$10$EIe8tgmYghULtStk3D63puhe7wlU7DwX/1zAXoFpGyDJE5NEsKJ4C"
   },
   user2RandomID: {
     id: "user2RandomID",
     email: "user2@example.com",
     password: "dishwasher-funk",
+    hashedPassword: "$2a$10$hD1N7Xfk298awjf3k0mWke2/twmVaB7rzUrJx.SH9eTl4/IY95B8u"
   },
 };
 
@@ -89,7 +92,6 @@ app.get("/hello", (req, res) => {
 app.get("/urls", (req, res) => {
   const ID = req.cookies["user_id"]
   const user = users[req.cookies["user_id"]]
-  console.log(urlsForUser(ID))
   const templateVars = { 
     user,
     urls: urlsForUser(ID)};
@@ -201,7 +203,7 @@ app.post("/login", (req, res) => {
   if (!user) {
     return res.status(403).send("Email is incorrect");
   }
-  if (user && password !== user.password) {
+  if (user && !bcrypt.compareSync(password, user.hashedPassword)) {
     return res.status(403).send("Password is incorrect");
   }
   else {
@@ -229,10 +231,11 @@ app.post("/register", (req, res) => {
   users[newId] = {
     id: newId,
     email: req.body.email,
-    password: req.body.password
+    hashedPassword: bcrypt.hashSync(req.body.password, 10) // hashing password
   }
     res.cookie("user_id", newId)
   res.redirect("/urls"); 
+  console.log(users)
 }});
 
 //Get to open Registration form...redirects to /urls if user signed in
@@ -246,7 +249,7 @@ app.get("/register", (req, res) => {
   };
   res.render("user-registration", templateVars);
   }
-})
+});
 
 //Get to open login page..redirects to /urls if user signed in
 app.get("/login", (req, res) => {
@@ -259,7 +262,7 @@ app.get("/login", (req, res) => {
   };
   res.render("login", templateVars);
 }
-})
+});
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
